@@ -1,0 +1,341 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container">
+    <!-- Page Header -->
+    <div class="page-header mb-4">
+        <div class="row align-items-center">
+            <div class="col">
+                <h4 class="mb-0">Bảng điều khiển người gửi</h4>
+                <p class="text-muted mb-0">Theo dõi và quản lý các lần gửi file của bạn</p>
+            </div>
+            <div class="col-auto">
+                <a href="{{ url_for('sender_key_management') }}" class="btn btn-primary">
+                    <i class="fas fa-upload me-2"></i>
+                    Gửi file mới
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Stats Cards -->
+    <div class="row g-4 mb-5">
+        <!-- Total Files -->
+        <div class="col-md-4">
+            <div class="stat-card h-100">
+                <div class="stat-card-body">
+                    <div class="stat-card-icon">
+                        <i class="fas fa-file-alt"></i>
+                    </div>
+                    <div class="stat-card-content">
+                        <div class="stat-card-value">{{ stats.total_files }}</div>
+                        <div class="stat-card-label">Tổng số file</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Total Size -->
+        <div class="col-md-4">
+            <div class="stat-card h-100">
+                <div class="stat-card-body">
+                    <div class="stat-card-icon bg-success-soft">
+                        <i class="fas fa-database text-success"></i>
+                    </div>
+                    <div class="stat-card-content">
+                        <div class="stat-card-value">{{ stats.total_size | filesizeformat }}</div>
+                        <div class="stat-card-label">Tổng dung lượng</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Completed Transfers -->
+        <div class="col-md-4">
+            <div class="stat-card h-100">
+                <div class="stat-card-body">
+                    <div class="stat-card-icon bg-info-soft">
+                        <i class="fas fa-check-circle text-info"></i>
+                    </div>
+                    <div class="stat-card-content">
+                        <div class="stat-card-value stat-card-completed">{{ stats.completed }}</div>
+                        <div class="stat-card-label">Đã hoàn thành</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Recent Transfers -->
+    <div class="card">
+        <div class="card-header">
+            <div class="d-flex align-items-center justify-content-between">
+                <div class="d-flex align-items-center">
+                    <i class="fas fa-history text-primary me-2"></i>
+                    <h5 class="mb-0">Giao dịch gần đây</h5>
+                </div>
+                <div class="card-actions">
+                    <button class="btn btn-sm btn-light-primary" onclick="refreshTransfers()">
+                        <i class="fas fa-sync-alt me-2"></i>
+                        Làm mới
+                    </button>
+                </div>
+            </div>
+        </div>
+        <div class="card-body p-0">
+            {% if recent_transfers %}
+            <div class="table-responsive">
+                <table class="sensor-files table align-middle mb-0">
+                    <thead>
+                        <tr>
+                            <th>Ngày</th>
+                            <th>File</th>
+                            <th>Người nhận</th>
+                            <th>Trạng thái</th>
+                            <th>Kích thước</th>
+                            <th class="text-end">Hành động</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for transfer in recent_transfers %}
+                        <tr data-session-token="{{ transfer.session_token }}" data-file-id="{{ transfer.id }}">
+                            <td>
+                                <div class="text-muted">{{ transfer.created_at.strftime('%Y-%m-%d') }}</div>
+                                <small>{{ transfer.created_at.strftime('%H:%M') }}</small>
+                            </td>
+                            <td>
+                                <div class="d-flex align-items-center">
+                                    <div class="file-icon me-2">
+                                        <i class="fas fa-file-alt text-primary"></i>
+                                    </div>
+                                    <div class="file-info">
+                                        <div class="file-name">{{ transfer.filename }}</div>
+                                    </div>
+                                </div>
+                            </td>
+                            <td>
+                                <div class="d-flex align-items-center">
+                                    <div class="recipient-avatar me-2">
+                                        <i class="fas fa-user"></i>
+                                    </div>
+                                    <div class="recipient-ip">{{ transfer.receiver_ip }}</div>
+                                </div>
+                            </td>
+                            <td>
+                                {% if transfer.status == 'verified' %}
+                                <span class="status-badge status-verified">
+                                    <i class="fas fa-check-circle me-1"></i>
+                                    Đã xác thực
+                                </span>
+                                {% elif transfer.status == 'downloaded' %}
+                                <span class="status-badge status-downloaded">
+                                    <i class="fas fa-download me-1"></i>
+                                    Đã tải về
+                                </span>
+                                {% elif transfer.status == 'pending' %}
+                                <span class="status-badge status-pending">
+                                    <i class="fas fa-clock me-1"></i>
+                                    Đang chờ
+                                </span>
+                                {% elif transfer.status == 'failed' %}
+                                <span class="status-badge status-failed">
+                                    <i class="fas fa-times-circle me-1"></i>
+                                    Lỗi
+                                </span>
+                                {% endif %}
+                            </td>
+                            <td>{{ transfer.file_size | filesizeformat }}</td>
+                            <td class="text-end">
+                                <div class="btn-group">
+                                    <button class="btn btn-sm btn-light" 
+                                            data-bs-toggle="tooltip" 
+                                            data-bs-title="Xem chi tiết"
+                                            onclick="showTransferDetails('{{ transfer.session_token }}')">
+                                        <i class="fas fa-info-circle"></i>
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="empty-state text-center py-5">
+                <div class="empty-state-icon mb-3">
+                    <i class="fas fa-inbox fa-3x"></i>
+                </div>
+                <h5 class="empty-state-title">Chưa có giao dịch nào</h5>
+                <p class="empty-state-subtitle mb-3">Hãy bắt đầu bằng cách tải file lên một host đã đăng ký</p>
+                <a href="{{ url_for('sender_key_management') }}" class="btn btn-primary">
+                    <i class="fas fa-upload me-2"></i>
+                    Tải file lên
+                </a>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- Transfer Details Modal -->
+<div class="modal fade" id="transferDetailsModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="fas fa-info-circle text-primary me-2"></i>
+                    Chi tiết giao dịch
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="transferDetailsContent">
+                <div class="d-flex justify-content-center py-4">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Đang tải...</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function showTransferDetails(sessionToken) {
+    const modal = new bootstrap.Modal(document.getElementById('transferDetailsModal'));
+    const content = document.getElementById('transferDetailsContent');
+    
+    modal.show();
+    content.innerHTML = `
+        <div class="d-flex justify-content-center py-4">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+        </div>
+    `;
+    
+    fetch(`/transfer_status/${sessionToken}`)
+        .then(response => response.json())
+        .then(data => {
+            content.innerHTML = `
+                <div class="transfer-details">
+                    <div class="detail-item mb-3">
+                        <label class="detail-label">Trạng thái</label>
+                        <div class="detail-value">
+                            <span class="status-badge status-${data.status.toLowerCase()}">
+                                <i class="fas fa-${getStatusIcon(data.status)} me-1"></i>
+                                ${data.status}
+                            </span>
+                        </div>
+                    </div>
+                    <div class="detail-item mb-3">
+                        <label class="detail-label">Cập nhật lần cuối</label>
+                        <div class="detail-value">
+                            ${new Date(data.updated_at).toLocaleString()}
+                        </div>
+                    </div>
+                </div>
+            `;
+        })
+        .catch(error => {
+            content.innerHTML = `
+                <div class="alert alert-danger">
+                    <i class="fas fa-exclamation-circle me-2"></i>
+                    Không thể tải chi tiết giao dịch
+                </div>
+            `;
+        });
+}
+
+function getStatusIcon(status) {
+    const icons = {
+        'verified': 'check-circle',
+        'downloaded': 'download',
+        'pending': 'clock',
+        'failed': 'times-circle'
+    };
+    return icons[status.toLowerCase()] || 'info-circle';
+}
+
+function refreshTransfers() {
+    location.reload();
+}
+
+const PRIVATE_KEY_STORAGE_KEY = 'rsa_sender_private_key_pem';
+const PUBLIC_KEY_STORAGE_KEY = 'rsa_sender_public_key_pem';
+
+async function generateRSAKeyPair() {
+    const keyPair = await window.crypto.subtle.generateKey(
+        {
+            name: 'RSA-OAEP',
+            modulusLength: 2048,
+            publicExponent: new Uint8Array([1, 0, 1]),
+            hash: 'SHA-256',
+        },
+        true,
+        ['encrypt', 'decrypt']
+    );
+    const publicKey = await window.crypto.subtle.exportKey('spki', keyPair.publicKey);
+    const privateKey = await window.crypto.subtle.exportKey('pkcs8', keyPair.privateKey);
+    return {
+        publicKeyPem: pemEncode(publicKey, 'PUBLIC KEY'),
+        privateKeyPem: pemEncode(privateKey, 'PRIVATE KEY'),
+    };
+}
+
+function pemEncode(buffer, label) {
+    const base64 = window.btoa(String.fromCharCode(...new Uint8Array(buffer)));
+    const lines = base64.match(/.{1,64}/g).join('\n');
+    return `-----BEGIN ${label}-----\n${lines}\n-----END ${label}-----`;
+}
+
+function savePrivateKeyToLocalStorage(pem) {
+    localStorage.setItem(PRIVATE_KEY_STORAGE_KEY, pem);
+}
+function getPrivateKeyFromLocalStorage() {
+    return localStorage.getItem(PRIVATE_KEY_STORAGE_KEY);
+}
+function savePublicKeyToLocalStorage(pem) {
+    localStorage.setItem(PUBLIC_KEY_STORAGE_KEY, pem);
+}
+function getPublicKeyFromLocalStorage() {
+    return localStorage.getItem(PUBLIC_KEY_STORAGE_KEY);
+}
+function getKeysFromLocalStorage() {
+    const private_key = localStorage.getItem(PRIVATE_KEY_STORAGE_KEY);
+    const public_key = localStorage.getItem(PUBLIC_KEY_STORAGE_KEY);
+    return private_key && public_key ? { privateKey: private_key, publicKey: public_key } : null;
+}
+
+async function ensureKeys() {
+    let keys = getKeysFromLocalStorage();
+    console.log('Keys from localStorage:', keys);
+    console.log(!keys)
+    if (!keys) {
+        const { publicKeyPem, privateKeyPem } = await generateRSAKeyPair();
+        savePrivateKeyToLocalStorage(privateKeyPem);
+        savePublicKeyToLocalStorage(publicKeyPem);
+
+        const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+        await fetch('/api/register_key/sender', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': csrfToken
+            },
+            body: JSON.stringify({public_key: publicKeyPem})
+        });
+    }
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+    tooltipTriggerList.map(function(tooltipTriggerEl) {
+        return new bootstrap.Tooltip(tooltipTriggerEl);
+    });
+
+    ensureKeys();
+});
+</script>
+{% endblock %}

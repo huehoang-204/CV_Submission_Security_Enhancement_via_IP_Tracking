@@ -1,0 +1,116 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-10">
+        <div class="row g-4">
+            <!-- Host Management Card -->
+            <div class="col-md-4">
+                <div class="card h-100 border-primary hover-shadow">
+                    <div class="card-body text-center p-4">
+                        <div class="display-4 mb-3 text-primary">
+                            <i class="fas fa-server"></i>
+                        </div>
+                        <h3 class="card-title mb-3">Quản lý Host</h3>
+                        <p class="card-text text-muted mb-4">
+                            Tạo và quản lý các điểm nhận file của bạn. Thiết lập các điểm nhận an toàn cho việc chuyển file.
+                        </p>
+                        <div class="mt-auto">
+                            <a href="{{ url_for('receiver_hosts') }}" class="btn btn-primary btn-lg">
+                                <i class="fas fa-cog me-2"></i>
+                                Quản lý Host
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Received Files Card -->
+            <div class="col-md-4">
+                <div class="card h-100 border-success hover-shadow">
+                    <div class="card-body text-center p-4">
+                        <div class="display-4 mb-3 text-success">
+                            <i class="fas fa-inbox"></i>
+                        </div>
+                        <h3 class="card-title mb-3">File đã nhận</h3>
+                        <p class="card-text text-muted mb-4">
+                            Xem và quản lý các file đã được gửi đến các host của bạn.
+                        </p>
+                        <div class="mt-auto">
+                            <a href="{{ url_for('receiver_files') }}" class="btn btn-success btn-lg">
+                                <i class="fas fa-download me-2"></i>
+                                Xem file
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Host Requests Card -->
+            <div class="col-md-4">
+                <div class="card h-100 border-warning hover-shadow">
+                    <div class="card-body text-center p-4">
+                        <div class="display-4 mb-3 text-warning">
+                            <i class="fas fa-user-plus"></i>
+                        </div>
+                        <h3 class="card-title mb-3">Yêu cầu Host</h3>
+                        <p class="card-text text-muted mb-4">
+                            Quản lý các yêu cầu tham gia từ người gửi muốn sử dụng host của bạn.
+                        </p>
+                        <div class="mt-auto">
+                            <a href="{{ url_for('receiver_host_approval') }}" class="btn btn-warning btn-lg">
+                                <i class="fas fa-tasks me-2"></i>
+                                Quản lý yêu cầu
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Quick Stats -->
+        {% if stats %}
+        <div class="row mt-4">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header">
+                        <h4 class="mb-0">
+                            <i class="fas fa-chart-bar me-2"></i>
+                            Thống kê nhanh
+                        </h4>
+                    </div>
+                    <div class="card-body">
+                        <div class="row g-4">
+                            <div class="col-md-3">
+                                <div class="text-center">
+                                    <h6 class="text-muted">Host đang hoạt động</h6>
+                                    <h2>{{ stats.active_hosts }}</h2>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="text-center">
+                                    <h6 class="text-muted">File đã nhận</h6>
+                                    <h2>{{ stats.total_files }}</h2>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="text-center">
+                                    <h6 class="text-muted">Tổng dung lượng</h6>
+                                    <h2>{{ stats.total_size | filesizeformat }}</h2>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="text-center">
+                                    <h6 class="text-muted">Hoạt động gần nhất</h6>
+                                    <h2>{{ stats.last_activity.strftime('%d/%m') if stats.last_activity else 'N/A' }}</h2>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

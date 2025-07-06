@@ -1,0 +1,1150 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-10">
+        <div class="card mb-4">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <div class="d-flex align-items-center">
+                    <div class="header-icon me-3">
+                        <i class="fas fa-inbox"></i>
+                    </div>
+                    <div>
+                        <h4 class="mb-0">File đã nhận</h4>
+                        <p class="text-muted mb-0 small">Quản lý các file bảo mật bạn đã nhận</p>
+                    </div>
+                </div>
+                <div>
+                    <a href="{{ url_for('receiver_hosts') }}" class="btn btn-primary">
+                        <i class="fas fa-server me-2"></i>
+                        Quản lý Host
+                    </a>
+                </div>
+            </div>
+            
+            <div id="received-files-container" class="card-body">
+                <!-- Host Selection -->
+                {% if hosts %}
+                <div class="mb-4">                    
+                    <form action="{{ url_for('receiver_files') }}" method="GET" class="row">
+                        <div class="col-md-4">
+                            <label class="form-label fw-medium mb-2">Lọc theo Host</label>
+                            <select class="form-select" id="hostSelect" name="host_id" onchange="this.form.submit()">
+                                <option value="">Tất cả Host</option>
+                                {% for host in hosts %}
+                                <option value="{{ host.id }}" {% if selected_host_id == host.id %}selected{% endif %}>
+                                    {{ host.name }} ({{ host.ip_address }})
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </form>
+                </div>
+                {% endif %}
+
+                <!-- Stats Card -->
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h5 class="mb-0">
+                            <i class="fas fa-chart-bar me-2"></i>
+                            Thống kê
+                            {% if selected_host_id %}
+                                cho {{ hosts|selectattr('id', 'eq', selected_host_id)|first|attr('name') }}
+                            {% else %}
+                                cho tất cả Host
+                            {% endif %}
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row g-4">
+                            <div class="col-md-4">
+                                <div class="stat-card">
+                                    <div class="stat-icon">
+                                        <i class="fas fa-file-alt"></i>
+                                    </div>
+                                    <div class="stat-info">
+                                        <h6>Tổng số file</h6>
+                                        <strong>{{ stats.total_files }}</strong>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="stat-card">
+                                    <div class="stat-icon">
+                                        <i class="fas fa-database"></i>
+                                    </div>
+                                    <div class="stat-info">
+                                        <h6>Tổng dung lượng</h6>
+                                        <strong>{{ stats.total_size | filesizeformat }}</strong>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="stat-card">
+                                    <div class="stat-icon">
+                                        <i class="fas fa-circle-check"></i>
+                                    </div>
+                                    <div class="stat-info">
+                                        <h6>Số file hoàn thành</h6>
+                                        <strong>{{ stats.completed_files }}</strong>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Received Files Table -->
+                {% if received_files %}
+                <div class="table-responsive">
+                    <table id="table-received-files" class="table table-hover align-middle mb-0">
+                        <thead>
+                            <tr>
+                                <th style="width: 35%">Tên file</th>
+                                <th style="width: 20%">Người gửi</th>
+                                <th style="width: 15%">Dung lượng</th>
+                                <th style="width: 20%">Trạng thái</th>
+                                <th style="width: 15%" class="text-end">Hành động</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for file in received_files %}
+                            <tr data-session-token="{{ file.session_token }}" data-file-id="{{ file.id }}">
+                                <td>
+                                    <div class="d-flex align-items-center">
+                                        <div class="file-icon me-3">
+                                            <i class="fas fa-file-alt"></i>
+                                        </div>
+                                        <div class="file-info">
+                                            <div class="file-name">{{ file.filename }}</div>
+                                            <div class="file-date text-muted small">
+                                                {{ file.created_at.strftime('%Y-%m-%d, %H:%M') }}
+                                            </div>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td>
+                                    <div class="d-flex align-items-center">
+                                        <div class="sender-avatar me-2">
+                                            <i class="fas fa-user"></i>
+                                        </div>
+                                        <code class="sender-ip">{{ file.sender_ip }}</code>
+                                    </div>
+                                </td>
+                                <td>{{ file.file_size | filesizeformat }}</td>
+                                <td>
+                                    {% if file.status == 'verified' %}
+                                        <span class="status-badge status-verified">
+                                            <i class="fas fa-check-circle"></i>
+                                            Đã xác thực
+                                        </span>
+                                    {% elif file.status == 'failed' %}
+                                        <span class="status-badge status-failed">
+                                            <i class="fas fa-times-circle"></i>
+                                            Lỗi
+                                        </span>
+                                    {% elif file.status == 'downloaded' %}
+                                        <span class="status-badge status-downloaded">
+                                            <i class="fas fa-download"></i>
+                                            Đã tải về
+                                        </span>
+                                    {% else %}
+                                        <span class="status-badge status-pending">
+                                            <i class="fas fa-clock"></i>
+                                            Đang chờ
+                                        </span>
+                                    {% endif %}
+                                </td>
+                                <td class="text-end">
+                                    <div id="file-action-btn" style="display: flex; gap: 3px; justify-content: center;">
+                                        {% if file.status == 'pending' %}
+                                        <button type="button" class="btn btn-sm btn-success verify-btn"
+                                                data-csrf-token="{{ csrf_token() }}"
+                                                data-session-token="{{ file.session_token }}"
+                                                data-file-id="{{ file.id }}"
+                                                data-host-id="{{ file.receiver_ip }}"
+                                                data-bs-toggle="tooltip"
+                                                data-bs-title="Xác thực file">
+                                            <i class="fas fa-check"></i>
+                                        </button>
+                                        {% endif %}
+                                        {% if file.status != 'pending' %}
+                                        <button type="button" class="btn btn-sm btn-info verify-details-btn"
+                                                data-session-token="{{ file.session_token }}"
+                                                data-file-id="{{ file.id }}"
+                                                data-host-id="{{ file.receiver_ip }}"
+                                                data-bs-toggle="tooltip" 
+                                                data-bs-title="Xem chi tiết xác thực">
+                                            <i class="fas fa-shield-alt"></i>
+                                        </button>
+                                        {% endif %}
+                                        <button type="button" class="btn btn-sm btn-outline-primary download-btn"
+                                                data-session-token="{{ file.session_token }}"
+                                                data-file-id="{{ file.id }}"
+                                                data-host-id="{{ file.receiver_ip }}"
+                                                data-status="{{ file.status }}"
+                                                data-bs-toggle="tooltip"
+                                                data-bs-title="{% if file.status == 'verified' or file.status == 'downloaded' %}Tải file đã giải mã{% else %}Tải file mã hóa{% endif %}">
+                                            <i class="fas {% if file.status == 'verified' or file.status == 'downloaded' %}fa-download{% else %}fa-lock{% endif %}"></i>
+                                        </button>
+                                    </div>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <div class="empty-state text-center py-5">
+                    <div class="empty-state-icon mb-3">
+                        <i class="fas fa-inbox"></i>
+                    </div>
+                    <h5 class="empty-state-title">Chưa có file nào</h5>
+                    <p class="empty-state-text mb-0">Các file gửi đến bạn sẽ xuất hiện tại đây</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Verification Details Modal -->
+        <div class="modal fade" id="verificationModal" tabindex="-1">
+            <div class="modal-dialog modal-lg">
+                <div class="modal-content shadow-lg border-0">
+                    <div class="modal-header bg-primary text-white align-items-center">
+                        <h5 class="modal-title d-flex align-items-center">
+                            <i class="fas fa-shield-alt me-2"></i>
+                            Chi tiết xác thực file
+                        </h5>
+                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body bg-light">
+                        <!-- File Information (Initial View) -->
+                        <div class="verification-info" id="verification-info">
+                            <div class="mb-4">
+                                <h6 class="fw-bold text-primary"><i class="fas fa-info-circle me-2"></i>Thông tin file</h6>
+                                <div class="row g-3">
+                                    <div class="col-md-6">
+                                        <p><strong>Tên file:</strong><br>
+                                            <span id="modal-filename" class="text-muted"></span></p>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <p><strong>Thời gian tải lên:</strong><br>
+                                            <span id="modal-timestamp" class="text-muted"></span></p>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="mb-4">
+                                <h6 class="fw-bold text-primary"><i class="fas fa-lock me-2"></i>Thông tin mã hóa</h6>
+                                <div class="row g-3">
+                                    <div class="col-12">
+                                        <p><strong>Initialization Vector (IV):</strong><br>
+                                            <code id="modal-iv" class="d-block mb-2 p-2 bg-light rounded border"></code></p>
+                                    </div>
+                                    <div class="col-12">
+                                        <p><strong>File Hash (SHA-512):</strong><br>
+                                            <code id="modal-file-hash" class="d-block mb-2 p-2 bg-light rounded border word-wrap"></code></p>
+                                    </div>
+                                    <div class="col-12">
+                                        <p><strong>Chữ ký số:</strong><br>
+                                            <code id="modal-signature" class="d-block mb-2 p-2 bg-light rounded border word-wrap"></code></p>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="mb-4">
+                                <h6 class="fw-bold text-primary"><i class="fas fa-user me-2"></i>Thông tin người gửi</h6>
+                                <div class="row g-3">
+                                    <div class="col-12">
+                                        <p><strong>Địa chỉ IP:</strong><br>
+                                            <code id="modal-sender-ip" class="text-muted"></code></p>
+                                    </div>
+                                    <div class="col-12">
+                                        <p><strong>Public Key:</strong></p>
+                                        <details>
+                                            <summary class="text-primary" style="cursor: pointer">Xem Public Key</summary>
+                                            <pre><code id="modal-sender-key" class="d-block mt-2 p-2 bg-light rounded border small"></code></pre>
+                                        </details>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Step-by-Step Verification Process -->
+                        <div class="verification-process d-none" id="verification-process">
+                            <div class="verification-head text-center mb-4">
+                                <h5 class="fw-bold text-primary">Quy trình xác thực file</h5>
+                                <p class="text-muted">Vui lòng chờ trong khi hệ thống kiểm tra bảo mật file của bạn</p>
+                            </div>
+                            <!-- Tổng quan trạng thái -->
+                            <div class="mb-4 status-loader">
+                                <div class="d-flex justify-content-center align-items-center gap-3">
+                                    <div id="overall-status" class="badge bg-secondary px-3 py-2 fs-6">
+                                        <i class="fas fa-spinner fa-spin me-2"></i>Đang xác thực...
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="verification-success text-center d-none" id="verification-success">
+                                <i class="fas fa-check-circle text-success display-1 mb-3 animate__animated animate__tada"></i>
+                                <h5 class="text-success">Xác thực thành công!</h5>
+                                <p>File đã được xác thực và an toàn để tải về.</p>
+                            </div>
+                            <!-- Verification Steps (grouped, with animation) -->
+                            <div class="verification-steps row row-cols-1 row-cols-md-2 g-4">
+                                <div class="col">
+                                    <!-- Step 3: Hash Integrity -->
+                                    <div class="verification-step mb-4 shadow-sm rounded bg-white p-3 animate__animated animate__fadeInLeft" id="step-hash">
+                                        <div class="step-header d-flex align-items-center">
+                                            <div class="step-indicator me-3">
+                                                <div class="step-circle">
+                                                    <div class="step-progress">
+                                                        <svg class="progress-ring" width="40" height="40">
+                                                            <circle class="progress-ring-circle" cx="20" cy="20" r="18" 
+                                                                    fill="transparent" stroke="#e9ecef" stroke-width="2"/>
+                                                            <circle class="progress-ring-bar" cx="20" cy="20" r="18" 
+                                                                    fill="transparent" stroke="#0d6efd" stroke-width="2" 
+                                                                    pathLength="100" stroke-dasharray="100" stroke-dashoffset="100"/>
+                                                        </svg>
+                                                        <div class="step-icon">
+                                                            <i class="fas fa-fingerprint step-waiting"></i>
+                                                            <i class="fas fa-check step-success d-none"></i>
+                                                            <i class="fas fa-times step-error d-none"></i>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div class="step-content flex-grow-1">
+                                                <h6 class="step-title mb-1">Kiểm tra tính toàn vẹn (Hash)</h6>
+                                                <p class="step-description text-muted mb-0">Xác minh file không bị thay đổi</p>
+                                                <div class="step-details mt-2 d-none">
+                                                    <small class="text-success">✓ File integrity verified successfully</small>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <!-- Step 5: File Decryption -->
+                                    <div class="verification-step mb-4 shadow-sm rounded bg-white p-3 animate__animated animate__fadeInLeft" id="step-decrypt">
+                                        <div class="step-header d-flex align-items-center">
+                                            <div class="step-indicator me-3">
+                                                <div class="step-circle">
+                                                    <div class="step-progress">
+                                                        <svg class="progress-ring" width="40" height="40">
+                                                            <circle class="progress-ring-circle" cx="20" cy="20" r="18" 
+                                                                    fill="transparent" stroke="#e9ecef" stroke-width="2"/>
+                                                            <circle class="progress-ring-bar" cx="20" cy="20" r="18" 
+                                                                    fill="transparent" stroke="#0d6efd" stroke-width="2" 
+                                                                    pathLength="100" stroke-dasharray="100" stroke-dashoffset="100"/>
+                                                        </svg>
+                                                        <div class="step-icon">
+                                                            <i class="fas fa-unlock step-waiting"></i>
+                                                            <i class="fas fa-check step-success d-none"></i>
+                                                            <i class="fas fa-times step-error d-none"></i>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div class="step-content flex-grow-1">
+                                                <h6 class="step-title mb-1">Giải mã file</h6>
+                                                <p class="step-description text-muted mb-0">Giải mã nội dung file bằng AES</p>
+                                                <div class="step-details mt-2 d-none">
+                                                    <small class="text-success">✓ File decrypted successfully</small>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col">
+                                    <!-- Step 2: Digital Signature -->
+                                    <div class="verification-step mb-4 shadow-sm rounded bg-white p-3 animate__animated animate__fadeInRight" id="step-signature">
+                                        <div class="step-header d-flex align-items-center">
+                                            <div class="step-indicator me-3">
+                                                <div class="step-circle">
+                                                    <div class="step-progress">
+                                                        <svg class="progress-ring" width="40" height="40">
+                                                            <circle class="progress-ring-circle" cx="20" cy="20" r="18" 
+                                                                    fill="transparent" stroke="#e9ecef" stroke-width="2"/>
+                                                            <circle class="progress-ring-bar" cx="20" cy="20" r="18" 
+                                                                    fill="transparent" stroke="#0d6efd" stroke-width="2" 
+                                                                    pathLength="100" stroke-dasharray="100" stroke-dashoffset="100"/>
+                                                        </svg>
+                                                        <div class="step-icon">
+                                                            <i class="fas fa-signature step-waiting"></i>
+                                                            <i class="fas fa-check step-success d-none"></i>
+                                                            <i class="fas fa-times step-error d-none"></i>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div class="step-content flex-grow-1">
+                                                <h6 class="step-title mb-1">Xác minh chữ ký số (RSA/SHA-512)</h6>
+                                                <p class="step-description text-muted mb-0">Kiểm tra tính xác thực của file</p>
+                                                <div class="step-details mt-2 d-none">
+                                                    <small class="text-success">✓ Digital signature verified successfully</small>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <!-- Step 4: RSA Decryption -->
+                                    <div class="verification-step mb-4 shadow-sm rounded bg-white p-3 animate__animated animate__fadeInRight" id="step-rsa">
+                                        <div class="step-header d-flex align-items-center">
+                                            <div class="step-indicator me-3">
+                                                <div class="step-circle">
+                                                    <div class="step-progress">
+                                                        <svg class="progress-ring" width="40" height="40">
+                                                            <circle class="progress-ring-circle" cx="20" cy="20" r="18" 
+                                                                    fill="transparent" stroke="#e9ecef" stroke-width="2"/>
+                                                            <circle class="progress-ring-bar" cx="20" cy="20" r="18" 
+                                                                    fill="transparent" stroke="#0d6efd" stroke-width="2" 
+                                                                    pathLength="100" stroke-dasharray="100" stroke-dashoffset="100"/>
+                                                        </svg>
+                                                        <div class="step-icon">
+                                                            <i class="fas fa-key step-waiting"></i>
+                                                            <i class="fas fa-check step-success d-none"></i>
+                                                            <i class="fas fa-times step-error d-none"></i>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div class="step-content flex-grow-1">
+                                                <h6 class="step-title mb-1">Giải mã AES Session Key (RSA)</h6>
+                                                <p class="step-description text-muted mb-0">Giải mã khóa phiên bằng RSA</p>
+                                                <div class="step-details mt-2 d-none">
+                                                    <small class="text-success">✓ Session key decrypted successfully</small>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Error State -->
+                        <div class="verification-error text-center d-none" id="verification-error">
+                            <i class="fas fa-times-circle text-danger display-1 mb-3 animate__animated animate__shakeX"></i>
+                            <h5 class="text-danger">Xác thực thất bại</h5>
+                            <p id="verification-error-message">Đã xảy ra lỗi trong quá trình xác thực.</p>
+                            <div class="verification-error-details mt-4">
+                                <div class="alert alert-danger">
+                                    <strong>Cảnh báo bảo mật:</strong> File này không vượt qua kiểm tra bảo mật và không nên tin tưởng.
+                                </div>
+                                <div class="alert alert-warning mt-2">
+                                    <strong>Gợi ý:</strong> Vui lòng liên hệ người gửi hoặc thử xác thực file khác.
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-footer bg-light border-0">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Đóng</button>
+                        <button type="button" id="proceedVerifyBtn" class="btn btn-success" data-session-token="">
+                            <i class="fas fa-check me-2"></i>
+                            Tiến hành xác thực
+                        </button>
+                        <button type="button" id="downloadVerifiedBtn" class="btn btn-primary d-none">
+                            <i class="fas fa-download me-2"></i>
+                            Tải file
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const CONFIG = {
+    STEP_DELAY: 700,
+    SUCCESS_HIDE_DELAY: 3000,
+    VERIFICATION_STEPS: [
+        { id: 'step-ip', name: 'IP Verification', endpoint: 'ip' },
+        { id: 'step-signature', name: 'Digital Signature', endpoint: 'signature' },
+        { id: 'step-hash', name: 'Hash Integrity', endpoint: 'metadata' },
+        { id: 'step-rsa', name: 'RSA Decryption', endpoint: 'session-key' },
+        { id: 'step-decrypt', name: 'File Decryption', endpoint: 'integrity' }
+    ]
+};
+
+// Utility Functions
+const Utils = {
+    delay: (ms) => new Promise(resolve => setTimeout(resolve, ms)),
+    
+    showAlert: (type, message) => {
+        // Implement proper alert system instead of browser alert()
+        const alertDiv = document.createElement('div');
+        alertDiv.className = `alert alert-${type === 'error' ? 'danger' : 'success'} alert-dismissible fade show`;
+        alertDiv.innerHTML = `
+            ${message}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        `;
+        document.body.insertBefore(alertDiv, document.body.firstChild);
+        
+        setTimeout(() => alertDiv.remove(), 5000);
+    },
+
+    getCSRFToken: () => document.querySelector('meta[name="csrf-token"]')?.getAttribute('content'),
+    
+    fetchWithError: async (url, options = {}) => {
+        try {
+            const response = await fetch(url, {
+                headers: {
+                    'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').content,
+                    ...options.headers
+                },
+                ...options
+            });
+            
+            if (!response.ok) {
+                const error = await response.json();
+                throw new Error(error.error || `HTTP ${response.status}`);
+            }
+            
+            return await response.json();
+        } catch (error) {
+            console.error(`Fetch error for ${url}:`, error);
+            throw error;
+        }
+    }
+};
+
+// Step Management Class
+class VerificationStepManager {
+    constructor() {
+        this.steps = document.querySelectorAll('.verification-step');
+    }
+
+    resetAllSteps() {
+        this.steps.forEach(step => {
+            this.resetStep(step);
+        });
+    }
+
+    resetStep(step) {
+        step.classList.remove('active', 'completed', 'error');
+        step.style.opacity = '0.5';
+        
+        const progressBar = step.querySelector('.progress-ring-bar');
+        const icons = {
+            waiting: step.querySelector('.step-waiting'),
+            success: step.querySelector('.step-success'),
+            error: step.querySelector('.step-error')
+        };
+        const details = step.querySelector('.step-details');
+
+        progressBar.style.strokeDashoffset = '100';
+        icons.waiting?.classList.remove('d-none');
+        icons.success?.classList.add('d-none');
+        icons.error?.classList.add('d-none');
+        details?.classList.add('d-none');
+    }
+
+    updateStepState(stepElement, state, message = '') {
+        const progressBar = stepElement.querySelector('.progress-ring-bar');
+        const icons = {
+            waiting: stepElement.querySelector('.step-waiting'),
+            success: stepElement.querySelector('.step-success'),
+            error: stepElement.querySelector('.step-error')
+        };
+        const details = stepElement.querySelector('.step-details');
+        const bgIcon = stepElement.querySelector('.step-icon');
+
+        stepElement.classList.remove('active', 'completed', 'error');
+        stepElement.style.opacity = '1';
+        
+        switch (state) {
+            case 'active':
+                stepElement.classList.add('active');
+                progressBar.style.strokeDashoffset = '0';
+                progressBar.style.stroke = '#0d6efd';
+                break;
+                
+            case 'success':
+                stepElement.classList.add('completed');
+                progressBar.style.stroke = '#198754';
+                icons.waiting?.classList.add('d-none');
+                icons.success?.classList.remove('d-none');
+                bgIcon?.classList.add('bg-success');
+                if (message) {
+                    details.innerHTML = `<small class="text-success">✓ ${message}</small>`;
+                    details.classList.remove('d-none');
+                }
+                break;
+                
+            case 'error':
+                stepElement.classList.add('error');
+                progressBar.style.stroke = '#dc3545';
+                icons.waiting?.classList.add('d-none');
+                icons.error?.classList.remove('d-none');
+                bgIcon?.classList.add('bg-danger');
+                if (message) {
+                    details.innerHTML = `<small class="text-danger">✗ ${message}</small>`;
+                    details.classList.remove('d-none');
+                }
+                break;
+        }
+    }
+}
+
+// Modal Management Class
+class VerificationModal {
+    constructor() {
+        this.modal = document.getElementById('verificationModal');
+        this.modalInstance = new bootstrap.Modal(this.modal);
+        this.stepManager = new VerificationStepManager();
+        this.currentSessionToken = null;
+        this.currentFileId = null;
+        this.currentHostId = null;
+        this.isVerifying = false;
+        this.pendingDownload = null;
+        
+        this.initializeEventListeners();
+    }
+
+    initializeEventListeners() {
+        this.onModalHidden = () => {
+            this.reset();
+            if (this.pendingDownload) {
+                this.pendingDownload();
+                this.pendingDownload = null;
+            }
+        };
+
+        this.modal.addEventListener('hidden.bs.modal', this.onModalHidden);
+        // Close modal handlers
+        const closeButtons = this.modal.querySelectorAll('.btn-close, .btn-secondary[data-bs-dismiss="modal"]');
+        closeButtons.forEach(btn => {
+            btn.addEventListener('click', () => this.hide());
+        });
+
+        // Modal hidden event
+        this.modal.addEventListener('hidden.bs.modal', () => this.reset());
+
+        // Action buttons
+        document.getElementById('proceedVerifyBtn').addEventListener('click', 
+            () => this.runFullVerification());
+        document.getElementById('downloadVerifiedBtn').addEventListener('click', 
+            async () => await this.downloadFile());
+    }
+
+    show() {
+        this.modalInstance.show();
+    }
+
+    hide() {
+        this.modalInstance.hide();
+    }
+
+    reset() {
+        this.currentSessionToken = null;
+        this.currentFileId = null;
+        this.currentHostId = null;
+        this.isVerifying = false;
+        this.showContent('verification-info');
+        this.hideElements(['verification-success', 'downloadVerifiedBtn']);
+        this.showElements(['proceedVerifyBtn']);
+    }
+
+    showContent(contentClass) {
+        const contentTypes = ['verification-info', 'verification-process', 'verification-error'];
+        contentTypes.forEach(cls => {
+            document.querySelector(`.${cls}`)?.classList.add('d-none');
+        });
+        document.querySelector(`.${contentClass}`)?.classList.remove('d-none');
+
+        if (contentClass !== 'verification-process') {
+            document.getElementById('verification-success')?.classList.add('d-none');
+        }
+    }
+
+    hideElements(elementIds) {
+        elementIds.forEach(id => {
+            document.getElementById(id)?.classList.add('d-none');
+        });
+    }
+
+    showElements(elementIds) {
+        elementIds.forEach(id => {
+            document.getElementById(id)?.classList.remove('d-none');
+        });
+    }
+
+    async loadFileMetadata(sessionToken) {
+        try {
+            const metadata = await Utils.fetchWithError(`/file_metadata/${sessionToken}`);
+            
+            // Populate modal with metadata
+            const fields = {
+                'modal-filename': metadata.filename,
+                'modal-timestamp': new Date(metadata.timestamp).toLocaleString(),
+                'modal-iv': metadata.iv,
+                'modal-file-hash': metadata.file_hash,
+                'modal-signature': metadata.signature,
+                'modal-sender-ip': metadata.sender_ip,
+                'modal-sender-key': metadata.sender_key
+            };
+
+            Object.entries(fields).forEach(([id, value]) => {
+                const element = document.getElementById(id);
+                if (element) element.textContent = value;
+            });
+
+            return metadata;
+        } catch (error) {
+            Utils.showAlert('error', 'Failed to fetch file metadata: ' + error.message);
+            throw error;
+        }
+    }
+
+    async runFullVerification() {
+        if (!this.currentSessionToken) return;
+        this.isVerifying = true;
+        try {
+            this.stepManager.resetAllSteps();
+            this.showContent('verification-process');
+            const proceedBtn = document.getElementById('proceedVerifyBtn');
+            proceedBtn.disabled = true;
+            document.querySelector('.status-loader')?.classList.remove('d-none');
+            this.hideElements(['verification-success']);
+            document.querySelector('.verification-head')?.classList.remove('d-none');
+
+            // 1. Tải metadata và file mã hóa
+            const metadata = await this.loadFileMetadata(this.currentSessionToken);
+            const encryptedFile = await this.fetchEncryptedFile(this.currentSessionToken);
+
+            // Log các trường base64 để debug
+            console.log('metadata:', metadata);
+            console.log('metadata.signature:', metadata.signature);
+            console.log('metadata.iv:', metadata.iv);
+            console.log('metadata.encrypted_session_key:', metadata.encrypted_session_key);
+            console.log('metadata.sender_key:', metadata.sender_key);
+
+            // 2. Xác minh chữ ký số
+            this.stepManager.updateStepState(document.getElementById('step-signature'), 'active');
+            const senderPublicKey = await this.importRsaPublicKey(metadata.sender_key, 'SHA-512');
+            const { filename, timestamp, sender_ip } = metadata;
+            const partialData = { filename, timestamp, sender_ip };
+            console.log('Partial data for signature verification:', partialData);
+            const isValidSignature = await this.verifySignature(
+                metadata.signature,
+                canonicalSerializeMetadata(partialData),
+                senderPublicKey
+            );
+            if (!isValidSignature) throw new Error('Invalid digital signature');
+            this.stepManager.updateStepState(document.getElementById('step-signature'), 'success', 'Signature valid');
+            await Utils.delay(CONFIG.STEP_DELAY);
+
+            // 3. Kiểm tra hash
+            this.stepManager.updateStepState(document.getElementById('step-hash'), 'active');
+            const iv = this.base64ToArrayBuffer(metadata.iv);
+            const fileHash = await this.calculateSHA512(encryptedFile, iv);
+            if (fileHash !== metadata.file_hash) throw new Error('File hash mismatch');
+            this.stepManager.updateStepState(document.getElementById('step-hash'), 'success', 'Hash valid');
+            await Utils.delay(CONFIG.STEP_DELAY);
+
+            // 4. Giải mã session key (RSA)
+            this.stepManager.updateStepState(document.getElementById('step-rsa'), 'active');
+            const hostName = metadata.host_name;
+            const privateKeyStorageKey = 'rsa_host_private_key_pem' + hostName;
+            const privateKeyPem = localStorage.getItem(privateKeyStorageKey);
+            if (!privateKeyPem) throw new Error('No private key found for host: ' + hostName);
+            const receiverPrivateKey = await this.importRsaPrivateKey(privateKeyPem, 'SHA-512');
+            const sessionKey = await this.decryptSessionKey(metadata.encrypted_session_key, receiverPrivateKey);
+            this.stepManager.updateStepState(document.getElementById('step-rsa'), 'success', 'Session key decrypted');
+            await Utils.delay(CONFIG.STEP_DELAY);
+
+            // 6. Giải mã file (AES)
+            this.stepManager.updateStepState(document.getElementById('step-decrypt'), 'active');
+            const decrypted = await this.decryptFileAES(encryptedFile, sessionKey, iv);
+            // (Có thể kiểm tra nội dung file nếu muốn)
+            this.stepManager.updateStepState(document.getElementById('step-decrypt'), 'success', 'File decrypted');
+            await Utils.delay(CONFIG.STEP_DELAY);
+
+            // Gọi endpoint cập nhật trạng thái file đã xác thực thành công
+            try {
+                await fetch(`/verify/${this.currentSessionToken}/verified`, { 
+                    method: 'POST',
+                    headers: {
+                        'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').content
+                    }
+                });
+            } catch (e) {
+                console.warn('Failed to update file status to complete:', e);
+            }
+
+            this.showElements(['verification-success', 'downloadVerifiedBtn']);
+            this.hideElements(['proceedVerifyBtn']);
+            document.querySelector('.verification-head')?.classList.add('d-none');
+            document.querySelector('.status-loader')?.classList.add('d-none');
+            this.toggleVerifyButtons({ sessionToken: this.currentSessionToken, fileId: this.currentFileId, hostId: this.currentHostId });
+
+            setTimeout(() => this.hide(), CONFIG.SUCCESS_HIDE_DELAY);
+
+        } catch (error) {
+            console.error('Verification failed:', error);
+            document.getElementById('verification-error-message').textContent = error.message;
+            this.showContent('verification-error');
+        } finally {
+            this.isVerifying = false;
+            document.getElementById('proceedVerifyBtn').disabled = false;
+        }
+    }
+
+    async fetchEncryptedFile(sessionToken) {
+        const res = await fetch(`/download/${sessionToken}`);
+        if (!res.ok) throw new Error('Cannot fetch encrypted file');
+        return await res.arrayBuffer();
+    }
+
+    async decryptedFile(sessionToken) {
+        const fileId = this.currentFileId;
+        try {
+            // 1. Fetch metadata
+            const metaRes = await fetch(`/file_metadata/${sessionToken}`);
+            if (!metaRes.ok) throw new Error('Không lấy được metadata file');
+            const meta = await metaRes.json();
+            console.log('File metadata:', meta);
+            // 2. Fetch encrypted file (raw bytes)
+            const fileRes = await fetch(`/api/raw_encrypted_file/${sessionToken}`);
+            if (!fileRes.ok) throw new Error('Không lấy được file mã hóa');
+            const encryptedFile = new Uint8Array(await fileRes.arrayBuffer());
+            // 3. Get private key from localStorage
+            const hostName = meta.host_name;
+            const privKeyPem = localStorage.getItem('rsa_host_private_key_pem' + hostName);
+            if (!privKeyPem) throw new Error('Không tìm thấy private key trên trình duyệt');
+            // 4. Import private key
+            const privKey = await this.importRsaPrivateKey(privKeyPem, 'SHA-512');
+            // 5. Decode base64 fields
+            const iv = this.base64ToArrayBuffer(meta.iv);
+            const encryptedSessionKey = this.base64ToArrayBuffer(meta.encrypted_session_key);
+            // 6. Decrypt AES session key
+            const aesKeyRaw = await window.crypto.subtle.decrypt({name: 'RSA-OAEP'}, privKey, encryptedSessionKey);
+            const aesKey = await window.crypto.subtle.importKey('raw', aesKeyRaw, {name: 'AES-CBC'}, false, ['decrypt']);
+            // 7. Decrypt file (strip IV if present)
+            let fileIv = iv;
+            let cipherData = encryptedFile;
+            if (encryptedFile.length > 16 && this.arrayBufferEquals(encryptedFile.slice(0, 16), iv)) {
+                cipherData = encryptedFile.slice(16);
+            }
+            const decrypted = await window.crypto.subtle.decrypt({name: 'AES-CBC', iv: fileIv}, aesKey, cipherData);
+            // 8. Download
+            const blob = new Blob([decrypted]);
+            const a = document.createElement('a');
+            a.href = URL.createObjectURL(blob);
+            a.download = meta.filename.replace('.enc', '') || 'decrypted_file';
+            document.body.appendChild(a);
+            a.click();
+            setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
+            // 9. Notify server (mark as downloaded)
+            const response = await fetch(`/verify/${sessionToken}/downloaded`, {
+                method: 'POST',
+                headers: { 'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').content }
+            });
+            console.log('Status update response:', response.status, await response.text());
+            this.updateFileStatus(fileId, 'downloaded');
+        } catch (e) {
+            console.error('Download error:', e);
+            await fetch(`/verify/${sessionToken}/failed`, {method: 'POST', 'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').content});
+            this.updateFileStatus(fileId, 'failed');
+        }
+    }
+
+    async downloadFile() {
+        if (this.currentSessionToken) {
+            const sessionToken = this.currentSessionToken;
+            const fileId = this.currentFileId;
+            // New: fully client-side decryption and download
+            this.pendingDownload = async () => {
+                try {
+                    await this.decryptedFile(sessionToken);
+                } catch (e) {
+                    Utils.showAlert('error', 'Lỗi khi giải mã/tải file: ' + e.message);
+                    console.error('Download error:', e);
+                }
+            };
+        }
+    }
+    
+    base64ToArrayBuffer(b64) {
+        if (!b64 || typeof b64 !== 'string') {
+            throw new Error('Base64 input is missing or not a string');
+        }
+        // Remove whitespace and check for invalid characters
+        b64 = b64.replace(/\s+/g, '');
+        // Check base64 validity (simple check)
+        if (!/^([A-Za-z0-9+/=]+)$/.test(b64)) {
+            console.error('Invalid base64 input:', b64);
+            throw new Error('Invalid base64 input');
+        }
+        try {
+            const binary = atob(b64);
+            const len = binary.length;
+            const bytes = new Uint8Array(len);
+            for (let i = 0; i < len; i++) bytes[i] = binary.charCodeAt(i);
+            return bytes.buffer;
+        } catch (e) {
+            console.error('Failed to decode base64:', b64, e);
+            throw new Error('Failed to decode base64: ' + e.message);
+        }
+    }
+    async importRsaPublicKey(pem, hashAlg = 'SHA-512') {
+        const b64 = pem.replace(/-----[^-]+-----/g, '').replace(/\s+/g, '');
+        const der = Uint8Array.from(atob(b64), c => c.charCodeAt(0));
+        return window.crypto.subtle.importKey(
+            'spki', der.buffer, { name: 'RSASSA-PKCS1-v1_5', hash: { name: hashAlg } }, true, ['verify']
+        );
+    }
+    async importRsaPrivateKey(pem, hashAlg = 'SHA-512') {
+        const b64 = pem.replace(/-----[^-]+-----/g, '').replace(/\s+/g, '');
+        const der = Uint8Array.from(atob(b64), c => c.charCodeAt(0));
+        return window.crypto.subtle.importKey(
+            'pkcs8', der.buffer, { name: 'RSA-OAEP', hash: { name: hashAlg } }, true, ['decrypt']
+        );
+    }
+    async verifySignature(signatureB64, data, publicKey) {
+        const encoder = new TextEncoder();
+        const dataBytes = encoder.encode(data);
+        const signature = this.base64ToArrayBuffer(signatureB64);
+        return window.crypto.subtle.verify(
+            { name: 'RSASSA-PKCS1-v1_5' },
+            publicKey,
+            signature,
+            dataBytes
+        );
+    }
+    async calculateSHA512(fileBuffer, iv) {
+        // fileBuffer: ArrayBuffer, iv: ArrayBuffer
+        const combined = new Uint8Array(iv.byteLength + fileBuffer.byteLength);
+        combined.set(new Uint8Array(iv), 0);
+        combined.set(new Uint8Array(fileBuffer), iv.byteLength);
+        const hashBuffer = await window.crypto.subtle.digest('SHA-512', combined.buffer);
+        return Array.from(new Uint8Array(hashBuffer)).map(b => b.toString(16).padStart(2, '0')).join('');
+    }
+    async decryptSessionKey(encryptedSessionKeyB64, privateKey) {
+        const encrypted = this.base64ToArrayBuffer(encryptedSessionKeyB64);
+        return window.crypto.subtle.decrypt({ name: 'RSA-OAEP' }, privateKey, encrypted);
+    }
+    async decryptFileAES(encryptedFile, sessionKey, iv) {
+        return window.crypto.subtle.decrypt(
+            { name: 'AES-CBC', iv: new Uint8Array(iv) },
+            await window.crypto.subtle.importKey('raw', sessionKey, { name: 'AES-CBC' }, false, ['decrypt']),
+            encryptedFile
+        );
+    }
+    
+    arrayBufferEquals(a, b) {
+        if (a.byteLength !== b.byteLength) return false;
+        const va = new Uint8Array(a);
+        const vb = new Uint8Array(b);
+        for (let i = 0; i < va.length; i++) {
+            if (va[i] !== vb[i]) return false;
+        }
+        return true;
+    }
+
+    toggleVerifyButtons({ sessionToken = null, fileId = null, hostId = null }) {
+        const selector = sessionToken
+            ? `button[data-session-token="${sessionToken}"]`
+            : `button[data-file-id="${fileId}"]`;
+
+        const verifyBtn = document.querySelector(`${selector}.verify-btn`);
+        const downloadBtn = document.querySelector(`${selector}.download-btn`);
+        
+        if (!verifyBtn) {
+            console.warn('Verify button not found for', { sessionToken, fileId });
+            return;
+        }
+
+        verifyBtn.classList.remove('btn-success', 'verify-btn');
+        verifyBtn.classList.add('btn-info', 'verify-details-btn');
+
+        verifyBtn.setAttribute('data-bs-title', 'View Verification Details');
+        verifyBtn.setAttribute('title', 'View Verification Details');
+        verifyBtn.setAttribute('data-session-token', sessionToken);
+        verifyBtn.setAttribute('data-file-id', fileId);
+        verifyBtn.setAttribute('data-host-id', hostId);
+
+        downloadBtn.setAttribute('data-session-token', sessionToken);
+        downloadBtn.setAttribute('data-file-id', fileId);
+        downloadBtn.setAttribute('data-host-id', hostId);
+        downloadBtn.setAttribute('data-status', 'verified');
+        downloadBtn.setAttribute('data-bs-title', 'Download Decrypted File');
+
+
+        const iconVerify = verifyBtn.querySelector('i');
+        if (iconVerify) {
+            iconVerify.classList.remove('fa-check');
+            iconVerify.classList.add('fa-shield-alt');
+        }
+
+        const iconDownload = downloadBtn.querySelector('i');
+        if (iconDownload) {
+            iconDownload.classList.remove('fa-lock');
+            iconDownload.classList.add('fa-download');
+        }
+
+        const existingTooltip = bootstrap?.Tooltip?.getInstance(verifyBtn);
+        if (existingTooltip) {
+            existingTooltip.dispose();
+        }
+        if (bootstrap?.Tooltip) {
+            new bootstrap.Tooltip(verifyBtn);
+        }
+    }
+
+    updateFileStatus(fileId, status) {
+        const row = document.querySelector(`tr[data-file-id="${fileId}"]`);
+        if (row) {
+            const statusCell = row.querySelector('td:nth-child(4)');
+            if (statusCell) {
+                statusCell.innerHTML = (status === 'downloaded') ?`
+                    <span class="status-badge status-downloaded">
+                        <i class="fas fa-download"></i>
+                        Downloaded
+                    </span>
+                ` : `
+                    <span class="status-badge status-danger">
+                        <i class="fas fa-clock"></i>
+                        Failed
+                    </span>
+                `;
+            }
+        }
+    }
+
+    setCurrentFile(sessionToken, fileId, hostId) {
+        this.currentSessionToken = sessionToken;
+        this.currentFileId = fileId;
+        this.currentHostId = hostId;
+    }
+}
+
+// Main Application Class
+class FileReceiverApp {
+    constructor() {
+        this.modal = new VerificationModal();
+        this.initializeEventListeners();
+        this.initializeTooltips();
+    }
+
+    initializeEventListeners() {
+        const table = document.querySelector('#received-files-container');
+        if (table) {
+            table.addEventListener('click', this.handleTableClick.bind(this));
+        }
+
+        // Host selection
+        const hostSelect = document.getElementById('hostSelect');
+        if (hostSelect) {
+            hostSelect.addEventListener('change', () => {
+                document.getElementById('loading-overlay')?.classList.remove('d-none');
+                hostSelect.form.submit();
+            });
+        }
+    }
+
+    async handleTableClick(e) {
+        const target = e.target.closest('button');
+        if (!target) return;
+
+        const originalDisabled = target.disabled;
+        target.disabled = true;
+
+        try {
+            if (target.classList.contains('verify-btn')) {
+                const sessionToken = target.dataset.sessionToken;
+                const fileId = target.dataset.fileId;
+                const hostId = target.dataset.hostId;
+
+                this.modal.setCurrentFile(sessionToken, fileId, hostId);
+                this.modal.loadFileMetadata(sessionToken)
+                    .then(() => {
+                        this.modal.showContent('verification-info');
+                        this.modal.showElements(['proceedVerifyBtn']);
+                        this.modal.hideElements(['downloadVerifiedBtn']);
+                        document.getElementById('proceedVerifyBtn').disabled = false;
+                        this.modal.show();
+                    });
+            }
+
+            if (target.classList.contains('verify-details-btn')) {
+                const sessionToken = target.dataset.sessionToken;
+                const fileId = target.dataset.fileId;
+                const hostId = target.dataset.hostId;
+
+                this.modal.setCurrentFile(sessionToken, fileId, hostId);
+                this.modal.loadFileMetadata(sessionToken)
+                    .then(metadata => {
+                        this.displayVerificationResults(metadata);
+                        this.modal.show();
+                    });
+            }
+
+            if (target.classList.contains('download-btn')) {
+                const sessionToken = target.dataset.sessionToken;
+                const fileId = target.dataset.fileId;
+                const hostId = target.dataset.hostId;
+                const status = target.dataset.status;
+
+                this.modal.setCurrentFile(sessionToken, fileId, hostId);
+
+                if (status === 'pending' || !status) {
+                    window.open(`/api/raw_encrypted_file/${sessionToken}`, '_blank');
+                } else if (status === 'verified' || status === 'downloaded') {
+                    await this.modal.decryptedFile(sessionToken);
+                } else {
+                    Utils.showAlert('error', 'Không thể tải file với trạng thái hiện tại.');
+                }
+            }
+        } catch (error) {
+            Utils.showAlert('error', 'Error processing request: ' + error.message);
+            console.error('Error in handleTableClick:', error);
+        } finally {
+            target.disabled = originalDisabled;
+        }
+    }
+
+    displayVerificationResults(metadata) {
+        this.modal.showContent('verification-process');
+        this.modal.showElements(['verification-success', 'downloadVerifiedBtn']);
+        this.modal.hideElements(['proceedVerifyBtn']);
+        
+        document.querySelector('.verification-head')?.classList.add('d-none');
+        document.querySelector('.status-loader')?.classList.add('d-none');
+
+        // Update step states based on verification results
+        document.querySelectorAll('.verification-step').forEach(step => {
+            const isErrorStep = metadata.fail_step && step.id === metadata.fail_step;
+            
+            if (isErrorStep) {
+                this.modal.stepManager.updateStepState(step, 'error', metadata.error_message);
+            } else {
+                this.modal.stepManager.updateStepState(step, 'success', 'Completed successfully');
+            }
+        });
+    }
+
+    initializeTooltips() {
+        const tooltipTriggerList = [].slice.call(
+            document.querySelectorAll('[data-bs-toggle="tooltip"]')
+        );
+        tooltipTriggerList.map(tooltipTriggerEl => 
+            new bootstrap.Tooltip(tooltipTriggerEl)
+        );
+    }
+}
+
+// Canonical serialization for metadata (must match sender)
+function canonicalSerializeMetadata(metadata) {
+    return JSON.stringify({
+        filename: metadata.filename,
+        timestamp: metadata.timestamp,
+        sender_ip: metadata.sender_ip
+    });
+}
+
+// Initialize application when DOM is ready
+document.addEventListener('DOMContentLoaded', () => {
+    new FileReceiverApp();
+});
+</script>
+{% endblock %}

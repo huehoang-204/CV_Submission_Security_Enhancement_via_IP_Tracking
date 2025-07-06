@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="vi" data-bs-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}SecureCV{% endblock %}</title>
+    <!-- Client IP -->
+    <meta name="client-ip" content="{{ request.remote_addr }}">
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <!-- Favicon -->
+    <link rel="icon" type="image/png" href="{{ url_for('static', filename='images/icon.png') }}">
+    <!-- CSRF Token -->
+    <meta name="csrf-token" content="{{ csrf_token() }}">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
+    <!-- Socket.IO Client -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.6.1/socket.io.min.js"></script>
+</head>
+
+<body class="fade-in">
+    <!-- Loading overlay -->
+    <div id="loading-overlay" class="position-fixed top-0 start-0 w-100 h-100 d-none" style="background: rgba(0,0,0,0.7); z-index: 9999;">
+        <div class="position-absolute top-50 start-50 translate-middle text-center">
+            <div class="spinner-border text-primary mb-2" role="status" style="width: 3rem; height: 3rem;">
+                <span class="visually-hidden">Đang tải...</span>
+            </div>
+            <div class="text-light">Đang xử lý...</div>
+        </div>
+    </div>
+
+    <!-- Navigation -->
+    <nav class="navbar navbar-expand-lg navbar-dark">
+        <div class="container">
+            <a class="navbar-brand d-flex align-items-center" href="{{ url_for('index') }}">
+                <i class="fas fa-shield-alt me-2 text-primary"></i>
+                <span>SecureCV</span>
+            </a>
+            <button class="navbar-toggler border-0" type="button" data-bs-toggle="collapse" data-bs-target="#navbarContent">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarContent">
+                <ul class="navbar-nav ms-auto">
+                    {% if request.endpoint and 'receiver' in request.endpoint %}
+                    <!-- Receiver Mode Navigation -->
+                    <li class="nav-item">
+                        <a class="nav-link d-flex align-items-center" href="{{ url_for('receiver_dashboard') }}">
+                            <span class="nav-icon">
+                                <i class="fas fa-chart-line"></i>
+                            </span>
+                            <span>Bảng điều khiển</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link d-flex align-items-center" href="{{ url_for('receiver_hosts') }}">
+                            <span class="nav-icon">
+                                <i class="fas fa-server"></i>
+                            </span>
+                            <span>Điểm nhận</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link d-flex align-items-center" href="{{ url_for('receiver_host_approval') }}">
+                            <span class="nav-icon">
+                                <i class="fas fa-user-plus"></i>
+                            </span>
+                            <span>Yêu cầu tham gia</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link d-flex align-items-center" href="{{ url_for('receiver_files') }}">
+                            <span class="nav-icon">
+                                <i class="fas fa-inbox"></i>
+                            </span>
+                            <span>File nhận</span>
+                        </a>
+                    </li>
+                    {% elif request.endpoint and 'sender' in request.endpoint %}
+                    <!-- Sender Mode Navigation -->
+                    <li class="nav-item">
+                        <a class="nav-link d-flex align-items-center" href="{{ url_for('sender_dashboard') }}">
+                            <span class="nav-icon">
+                                <i class="fas fa-chart-line"></i>
+                            </span>
+                            <span>Bảng điều khiển</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link d-flex align-items-center" href="{{ url_for('sender_key_management') }}">
+                            <span class="nav-icon">
+                                <i class="fas fa-upload"></i>
+                            </span>
+                            <span>Tải lên</span>
+                        </a>
+                    </li>
+                    {% endif %}
+                    <!-- Mode Switch -->
+                    <li class="nav-item ms-2">
+                        <a class="nav-link btn btn-outline-primary btn-sm px-3 switch-mode" href="{{ url_for('index') }}">
+                            <i class="fas fa-exchange-alt me-1"></i>
+                            Chuyển chế độ
+                        </a>
+                    </li>
+                </ul>   
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="container my-4">
+        {% block content %}{% endblock %}
+    </main>
+
+    <!-- Toast Container -->
+    <div class="toast-container position-fixed bottom-0 end-0 p-3">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="toast align-items-center text-white bg-{{ category }} border-0" role="alert" aria-live="assertive" aria-atomic="true">
+                        <div class="d-flex">
+                            <div class="toast-body">
+                                <i class="fas {% if category == 'success' %}fa-check-circle{% elif category == 'danger' %}fa-exclamation-circle{% else %}fa-info-circle{% endif %} me-2"></i>
+                                {{ message }}
+                            </div>
+                            <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Đóng"></button>
+                        </div>
+                    </div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+    </div>
+
+    <!-- Scripts -->
+    <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.11.6/dist/umd/popper.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+    <script type="module" src="{{ url_for('static', filename='js/realtimeClient.js') }}"></script>
+    {% block scripts %}{% endblock %}
+</body>
+</html>

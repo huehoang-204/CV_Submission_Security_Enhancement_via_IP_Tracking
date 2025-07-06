@@ -1,0 +1,236 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-10">
+        <div class="card mb-4">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h4 class="mb-0">
+                    <i class="fas fa-server me-2"></i>
+                    Quản lý Host
+                </h4>
+                <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addHostModal">
+                    <i class="fas fa-plus me-2"></i>
+                    Thêm Host mới
+                </button>
+            </div>
+            <div class="card-body">
+                {% with messages = get_flashed_messages(with_categories=true) %}
+                    {% if messages %}
+                        {% for category, message in messages %}
+                            <div class="alert alert-{{ category }}">{{ message }}</div>
+                        {% endfor %}
+                    {% endif %}
+                {% endwith %}
+
+                {% if hosts %}
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>Tên Host</th>
+                                <th>Địa chỉ IP</th>
+                                <th>Mô tả</th>
+                                <th>Trạng thái Public Key</th>
+                                <th>Ngày tạo</th>
+                                <th>Hành động</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for host in hosts %}
+                            <tr>
+                                <td>{{ host.name }}</td>
+                                <td><code>{{ host.ip_address }}</code></td>
+                                <td>{{ host.description or 'Không có mô tả' }}</td>
+                                <td>
+                                    <span class="badge bg-success" data-bs-toggle="tooltip" title="Host này có thể nhận file được mã hóa">
+                                        <i class="fas fa-key me-1"></i>
+                                        Sẵn sàng nhận file
+                                    </span>
+                                </td>
+                                <td>{{ host.created_at.strftime('%Y-%m-%d %H:%M') }}</td>
+                                <td>                                    
+                                    <form action="{{ url_for('delete_host', host_id=host.id) }}" method="POST" class="d-inline">
+                                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                        <button type="submit" class="btn btn-sm btn-danger" onclick="return confirm('Bạn có chắc muốn xóa host này?')">
+                                            <i class="fas fa-trash"></i>
+                                        </button>
+                                    </form>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <div class="alert alert-info">
+                    <i class="fas fa-info-circle me-2"></i>
+                    Chưa có host nào được thêm. Nhấn "Thêm Host mới" để tạo mới.
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Add Host Modal -->
+<div class="modal fade" id="addHostModal" tabindex="-1" aria-labelledby="addHostModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title" id="addHostModalLabel">
+                    <i class="fas fa-server me-2"></i>
+                    Tạo điểm nhận file
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Đóng"></button>
+            </div>            <form action="{{ url_for('add_host') }}" method="POST">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <input type="hidden" name="has_keys">
+                <input type="hidden" name="public_key">
+                <div class="modal-body">                
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle me-2"></i>
+                        <strong>Khi bạn tạo host sẽ xảy ra:</strong>
+                        <ul class="mb-0 mt-2">
+                            <li>Một điểm nhận file sẽ được thiết lập cho địa chỉ IP hiện tại của bạn</li>
+                            <li>Khóa RSA sẽ được tự động tạo nếu bạn chưa có</li>
+                            <li>Public key của bạn sẽ sẵn sàng để người khác gửi file mã hóa</li>
+                            <li>Các file gửi đến host này sẽ được mã hóa an toàn bằng public key của bạn</li>
+                        </ul>
+                    </div>
+                    <div class="mb-3">
+                        <label for="name" class="form-label">Tên Host</label>
+                        <input type="text" class="form-control" id="name" name="name" placeholder="VD: Máy tính làm việc của tôi" required>
+                        <div class="form-text">Tên dễ nhớ để nhận diện điểm nhận file này</div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Địa chỉ IP</label>
+                        <div class="form-control">{{ client_ip }}</div>
+                        <input type="hidden" name="ip_address" class="form-control" value="{{ client_ip }}">
+                        <div class="form-text">Đây là địa chỉ IP hiện tại của bạn</div>
+                    </div>
+                    <div class="mb-3">
+                        <label for="description" class="form-label">Mô tả (không bắt buộc)</label>
+                        <textarea class="form-control" id="description" name="description" rows="3" 
+                                placeholder="VD: Máy tính văn phòng nhận file công việc"></textarea>
+                        <div class="form-text">Thêm chi tiết để dễ nhận diện điểm nhận file này</div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Hủy</button>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-plus me-2"></i>
+                        Tạo Host
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    const PRIVATE_KEY_STORAGE_KEY = 'rsa_host_private_key_pem';
+    const PUBLIC_KEY_STORAGE_KEY = 'rsa_host_public_key_pem';
+
+    async function generateRSAKeyPair() {
+        const keyPair = await window.crypto.subtle.generateKey(
+            {
+                name: 'RSA-OAEP',
+                modulusLength: 2048,
+                publicExponent: new Uint8Array([1, 0, 1]),
+                hash: 'SHA-256',
+            },
+            true,
+            ['encrypt', 'decrypt']
+        );
+        const publicKey = await window.crypto.subtle.exportKey('spki', keyPair.publicKey);
+        const privateKey = await window.crypto.subtle.exportKey('pkcs8', keyPair.privateKey);
+        return {
+            publicKeyPem: pemEncode(publicKey, 'PUBLIC KEY'),
+            privateKeyPem: pemEncode(privateKey, 'PRIVATE KEY'),
+        };
+    }
+
+    function pemEncode(buffer, label) {
+        const base64 = window.btoa(String.fromCharCode(...new Uint8Array(buffer)));
+        const lines = base64.match(/.{1,64}/g).join('\n');
+        return `-----BEGIN ${label}-----\n${lines}\n-----END ${label}-----`;
+    }
+
+    function savePrivateKeyToLocalStorage(host_name, pem) {
+        localStorage.setItem(PRIVATE_KEY_STORAGE_KEY+host_name, pem);
+    }
+    function getPrivateKeyFromLocalStorage(host_name) {
+        return localStorage.getItem(PRIVATE_KEY_STORAGE_KEY+host_name);
+    }
+    function savePublicKeyToLocalStorage(host_name, pem) {
+        localStorage.setItem(PUBLIC_KEY_STORAGE_KEY+host_name, pem);
+    }
+    function getPublicKeyFromLocalStorage(host_name) {
+        return localStorage.getItem(PUBLIC_KEY_STORAGE_KEY+host_name);
+    }
+    function getKeysFromLocalStorage(host_name) {
+        const private_key = localStorage.getItem(PRIVATE_KEY_STORAGE_KEY+host_name);
+        const public_key = localStorage.getItem(PUBLIC_KEY_STORAGE_KEY+host_name);
+        return private_key && public_key ? { privateKey: private_key, publicKey: public_key } : null;
+    }
+
+    async function ensureKeys(host_name) {
+        let keys = getKeysFromLocalStorage(host_name);
+        if (!keys) {
+            const { publicKeyPem, privateKeyPem } = await generateRSAKeyPair();
+            savePrivateKeyToLocalStorage(host_name, privateKeyPem);
+            savePublicKeyToLocalStorage(host_name, publicKeyPem);
+
+            const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+            await fetch('/api/register_key/receiver', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': csrfToken
+                },
+                body: JSON.stringify({
+                    host_name: host_name,
+                    public_key: publicKeyPem
+                })
+            })
+            .then(response => {
+                var addHostForm = document.querySelector('#addHostModal form');
+                if (response.ok) {
+                    addHostForm.querySelector('input[name="has_keys"]').value = 'true';
+                    addHostForm.querySelector('input[name="public_key"]').value = publicKeyPem;
+                } else {
+                    addHostForm.querySelector('input[name="has_keys"]').value = 'false';
+                    addHostForm.querySelector('input[name="public_key"]').value = '';
+                }
+            });
+        }
+    }
+
+    document.addEventListener('DOMContentLoaded', function() {
+        var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+        var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+            return new bootstrap.Tooltip(tooltipTriggerEl);
+        });
+
+        if (document.querySelector('.badge.bg-warning')) {
+            setTimeout(function() {
+                location.reload();
+            }, 5000);
+        }
+
+        var addHostForm = document.querySelector('#addHostModal form');
+        if (addHostForm) {
+            addHostForm.addEventListener('submit', async function(e) {
+                e.preventDefault();
+                var hostNameInput = addHostForm.querySelector('input[name="name"]');
+                var hostName = hostNameInput ? hostNameInput.value : '';
+                await ensureKeys(hostName);
+                addHostForm.submit();
+            });
+        }
+    });
+</script>
+{% endblock %}
