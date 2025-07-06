@@ -15,9 +15,7 @@
   <a href="#-cài-đặt--khởi-động">Cài Đặt</a> •
   <a href="#-luồng-hoạt-động--kiến-trúc">Kiến Trúc Chi Tiết</a>
 </p>
-<p align="center">
-  <a href="#"><strong>🚀 Xem Demo Trực Tuyến (Link Placeholder) 🚀</strong></a>
-</p>
+
 
 ## 🌟 Tính Năng Nổi Bật
 
@@ -161,5 +159,5 @@ ANTT/
 Dự án này được cấp phép theo Giấy phép MIT. Xem chi tiết tại file `LICENSE.md`.
 
 ## 🙏 Lời Cảm Ơn
-* Cảm ơn thầy **Trần Đăng Công** đã đưa ra đề tài và hướng dẫn.
+* Cảm ơn thầy **TS.Trần Đăng Công** đã đưa ra đề tài và hướng dẫn.
 * Cảm ơn cộng đồng mã nguồn mở đã cung cấp các công cụ tuyệt vời.
